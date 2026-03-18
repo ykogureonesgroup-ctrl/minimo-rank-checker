@@ -1,7 +1,7 @@
 const puppeteer = require('puppeteer');
 const yargs = require('yargs/yargs');
 const { hideBin } = require('yargs/helpers');
-// テスト
+
 const argv = yargs(hideBin(process.argv))
     .option('keyword', {
         alias: 'k',
