@@ -1,7 +1,7 @@
 const puppeteer = require('puppeteer');
 const yargs = require('yargs/yargs');
 const { hideBin } = require('yargs/helpers');
-
+// テスト
 const argv = yargs(hideBin(process.argv))
     .option('keyword', {
         alias: 'k',
@@ -61,12 +61,12 @@ const argv = yargs(hideBin(process.argv))
         // Additionally we search for the specific target
         const searchQuery = encodeURIComponent(`${keyword} ${target}`);
         const searchUrl = `https://minimodel.jp/search?keyword=${searchQuery}`;
-        
+
         await page.goto(searchUrl, { waitUntil: 'networkidle2' });
         console.log(`Requested URL: ${searchUrl}`);
 
         await new Promise(r => setTimeout(r, 2000));
-        
+
         // Handle potential overlays even on search page
         await page.evaluate(() => {
             const overlays = document.querySelectorAll('[class*="Modal"], [class*="Overlay"], [class*="Popup"]');
