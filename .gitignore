@@ -1,0 +1,5 @@
+node_modules
+.DS_Store
+debug_*.png
+debug_*.html
+*.log

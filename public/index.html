@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>minimo Rank Checker</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <header>
+            <h1>minimo Rank Checker</h1>
+            <p>ミニモの検索順位を自動で調査します</p>
+        </header>
+
+        <main class="main-content">
+            <section class="form-section card">
+                <form id="searchForm">
+                    <div class="form-group">
+                        <label for="keyword">エリアキーワード <span class="required">*</span></label>
+                        <input type="text" id="keyword" name="keyword" placeholder="例: 表参道" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="prefecture">都道府県 (任意)</label>
+                        <input type="text" id="prefecture" name="prefecture" placeholder="例: 東京都">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="target">ターゲット名 <span class="required">*</span></label>
+                        <input type="text" id="target" name="target" placeholder="スタッフ名やサロン名" required>
+                        <small>スペースを無視して部分一致で検索します</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="limit">ページ上限 (0で無制限)</label>
+                        <input type="number" id="limit" name="limit" value="10" min="0">
+                    </div>
+
+                    <button type="submit" id="submitBtn" class="btn primary-btn">
+                        <span class="btn-text">検索を開始</span>
+                        <div class="spinner hidden"></div>
+                    </button>
+                </form>
+            </section>
+
+            <section class="log-section card">
+                <div class="log-header">
+                    <h2>実行ログ</h2>
+                    <span id="statusBadge" class="badge idle">待機中</span>
+                </div>
+                <div class="console-wrapper">
+                    <pre id="logOutput" class="console-output">システム待機中...
+必要な情報を入力して「検索を開始」を押してください。
+</pre>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        document.getElementById('searchForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const keyword = document.getElementById('keyword').value;
+            const prefecture = document.getElementById('prefecture').value;
+            const target = document.getElementById('target').value;
+            const limit = document.getElementById('limit').value;
+
+            startSearch(keyword, prefecture, target, limit);
+        });
+
+        function startSearch(keyword, prefecture, target, limit) {
+            const btn = document.getElementById('submitBtn');
+            const btnText = btn.querySelector('.btn-text');
+            const spinner = btn.querySelector('.spinner');
+            const logOutput = document.getElementById('logOutput');
+            const statusBadge = document.getElementById('statusBadge');
+            
+            // Construct query string
+            const params = new URLSearchParams({
+                keyword,
+                prefecture,
+                target,
+                limit
+            });
+
+            // UI feedback
+            btn.disabled = true;
+            btnText.textContent = '検索中...';
+            spinner.classList.remove('hidden');
+            logOutput.innerHTML = '';
+            statusBadge.textContent = '実行中';
+            statusBadge.className = 'badge running';
+
+            // Connect to SSE event stream
+            const eventSource = new EventSource(`/api/search?${params.toString()}`);
+
+            eventSource.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                
+                if (data.type === 'log' || data.type === 'error') {
+                    // Append log
+                    const logLine = document.createElement('div');
+                    logLine.textContent = data.message || data;
+                    
+                    if (data.message && data.message.includes('✅ TARGET FOUND')) {
+                        logLine.classList.add('highlight-success');
+                    } else if (data.message && data.message.includes('ERROR:')) {
+                        logLine.classList.add('highlight-error');
+                    }
+                    
+                    logOutput.appendChild(logLine);
+                    
+                    // Auto-scroll to bottom
+                    logOutput.scrollTop = logOutput.scrollHeight;
+                }
+                
+                if (data.type === 'done') {
+                    eventSource.close();
+                    finishSearch();
+                }
+            };
+
+            eventSource.onerror = function() {
+                // If the connection drops or is closed by the server
+                eventSource.close();
+                finishSearch();
+                
+                const logLine = document.createElement('div');
+                logLine.textContent = 'Connection closed or lost.';
+                logLine.classList.add('highlight-error');
+                logOutput.appendChild(logLine);
+                logOutput.scrollTop = logOutput.scrollHeight;
+            };
+
+            function finishSearch() {
+                btn.disabled = false;
+                btnText.textContent = '検索を開始';
+                spinner.classList.add('hidden');
+                statusBadge.textContent = '完了';
+                statusBadge.className = 'badge completed';
+            }
+        }
+    </script>
+</body>
+</html>
