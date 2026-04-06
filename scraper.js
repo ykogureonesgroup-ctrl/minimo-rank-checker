@@ -50,11 +50,12 @@ async function runSearch(options) {
     // Block Images and Fonts to save memory on Render
     await page.setRequestInterception(true);
     page.on('request', (request) => {
+        if (request.isInterceptResolutionHandled()) return;
         const resourceType = request.resourceType();
         if (['image', 'stylesheet', 'font', 'media'].includes(resourceType)) {
-            request.abort();
+            request.abort().catch(() => {});
         } else {
-            request.continue();
+            request.continue().catch(() => {});
         }
     });
 
@@ -65,7 +66,7 @@ async function runSearch(options) {
         const searchQuery = encodeURIComponent(`${keyword} ${target}`);
         const searchUrl = `https://minimodel.jp/search?keyword=${searchQuery}`;
         
-        await page.goto(searchUrl, { waitUntil: 'networkidle2' });
+        await page.goto(searchUrl, { waitUntil: 'domcontentloaded', timeout: 60000 });
         log(`Requested URL: ${searchUrl}`);
 
         await new Promise(r => setTimeout(r, 2000));
@@ -142,10 +143,10 @@ async function runSearch(options) {
             if (hasNext) {
                 log(`Target not found on page ${pageNum}. Moving to next page...`);
 
-                await Promise.all([
-                    page.waitForNavigation({ waitUntil: 'domcontentloaded' }),
-                    page.click(nextButtonSelector)
-                ]);
+                const navPromise = page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 15000 }).catch(() => {});
+                await page.click(nextButtonSelector);
+                await navPromise;
+                await new Promise(r => setTimeout(r, 2000)); // Buffer for SPA routing
                 pageNum++;
             } else {
                 log('====== SEARCH COMPLETED ======');
