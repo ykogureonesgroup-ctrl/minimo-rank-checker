@@ -47,9 +47,18 @@ async function runSearch(options) {
     page.setDefaultNavigationTimeout(60000);
     page.setDefaultTimeout(30000);
 
-    // Removed Request Interception because blocking resources (CSS/Images)
-    // often causes Cloudflare to fail verification and detach the frame.
-    // Minimodel.jp will now load fully, which requires slightly more memory but avoids crash.
+    // Re-enable Request Interception to prevent Out of Memory (OOM) crashes on Render ("Target closed").
+    // We allow stylesheets/scripts to load cleanly, but block images/fonts/media which consume >100MB RAM.
+    await page.setRequestInterception(true);
+    page.on('request', (request) => {
+        if (request.isInterceptResolutionHandled()) return;
+        const resourceType = request.resourceType();
+        if (['image', 'font', 'media'].includes(resourceType)) {
+            request.abort('aborted').catch(() => {});
+        } else {
+            request.continue().catch(() => {});
+        }
+    });
 
 
     try {
