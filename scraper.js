@@ -39,25 +39,18 @@ async function runSearch(options) {
 
     const page = await browser.newPage();
     
-    // Set realistic User-Agent for headless mode (Force Desktop)
-    await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36');
+    // Removed fixed User-Agent to allow stealth plugin to use the actual browser's UA
+    // which prevents Cloudflare version mismatch detection.
     await page.setViewport({ width: 1280, height: 800 });
     
     // Increase default timeout slightly for cold boots
     page.setDefaultNavigationTimeout(60000);
     page.setDefaultTimeout(30000);
 
-    // Block Images and Fonts to save memory on Render
-    await page.setRequestInterception(true);
-    page.on('request', (request) => {
-        if (request.isInterceptResolutionHandled()) return;
-        const resourceType = request.resourceType();
-        if (['image', 'stylesheet', 'font', 'media'].includes(resourceType)) {
-            request.abort().catch(() => {});
-        } else {
-            request.continue().catch(() => {});
-        }
-    });
+    // Removed Request Interception because blocking resources (CSS/Images)
+    // often causes Cloudflare to fail verification and detach the frame.
+    // Minimodel.jp will now load fully, which requires slightly more memory but avoids crash.
+
 
     try {
         log('Navigating to minimodel.jp search page directly...');
