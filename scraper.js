@@ -64,9 +64,11 @@ async function runSearch(options) {
     try {
         log('Navigating to minimodel.jp search page directly...');
         // Area keyword can be directly searched via URL query: /search?keyword=エリア名
+        // If prefecture is provided, doing "エリア名(都道府県名)" correctly targets 
+        // specific regions like "大手町(広島県)" vs "大手町(東京都)".
         // NOTE: We only search for the area (keyword), and then scroll to find the target.
-        // Combining them in the URL causes 0 results on minimodel.jp.
-        const searchQuery = encodeURIComponent(keyword);
+        const searchKeyword = prefecture ? `${keyword}(${prefecture})` : keyword;
+        const searchQuery = encodeURIComponent(searchKeyword);
         const searchUrl = `https://minimodel.jp/search?keyword=${searchQuery}`;
         
         await page.goto(searchUrl, { waitUntil: 'domcontentloaded', timeout: 60000 });
