@@ -65,10 +65,14 @@ async function runSearch(options) {
         await new Promise(r => setTimeout(r, 2000));
         
         // Handle potential overlays even on search page
-        await page.evaluate(() => {
-            const overlays = document.querySelectorAll('[class*="Modal"], [class*="Overlay"], [class*="Popup"]');
-            overlays.forEach(el => el.remove());
-        });
+        try {
+            await page.evaluate(() => {
+                const overlays = document.querySelectorAll('[class*="Modal"], [class*="Overlay"], [class*="Popup"]');
+                overlays.forEach(el => el.remove());
+            });
+        } catch (e) {
+            log(`Warning: Could not clear overlays (usually because page redirected): ${e.message}`);
+        }
 
         let pageNum = 1;
         let globalRank = 0;
@@ -84,25 +88,32 @@ async function runSearch(options) {
             log(`Checking page ${pageNum}...`);
 
             try {
-                await page.waitForSelector('.ArtistDetailCard_artsitDetailCardWrapper__24g3p', { timeout: 5000 });
+                await page.waitForSelector('.ArtistDetailCard_artsitDetailCardWrapper__24g3p', { timeout: 15000 });
             } catch (e) {
                 log("====== SEARCH COMPLETED ======");
                 log("No results found on this page or end of results reached.");
                 break;
             }
 
-            const items = await page.evaluate(() => {
-                const cards = document.querySelectorAll('.ArtistDetailCard_artsitDetailCardWrapper__24g3p');
-                return Array.from(cards).map((card, index) => {
-                    const staffEl = card.querySelector('.ArtistProfileWithExperienceYear_profileName__JXBzb');
-                    const salonEl = card.querySelector('.ArtistProfileWithExperienceYear_salonName__4_e8k');
-                    return {
-                        staff: staffEl ? staffEl.textContent.trim() : '',
-                        salon: salonEl ? salonEl.textContent.trim() : '',
-                        raw: card.innerText
-                    };
+            let items = [];
+            try {
+                items = await page.evaluate(() => {
+                    const cards = document.querySelectorAll('.ArtistDetailCard_artsitDetailCardWrapper__24g3p');
+                    return Array.from(cards).map((card, index) => {
+                        const staffEl = card.querySelector('.ArtistProfileWithExperienceYear_profileName__JXBzb');
+                        const salonEl = card.querySelector('.ArtistProfileWithExperienceYear_salonName__4_e8k');
+                        return {
+                            staff: staffEl ? staffEl.textContent.trim() : '',
+                            salon: salonEl ? salonEl.textContent.trim() : '',
+                            raw: card.innerText
+                        };
+                    });
                 });
-            });
+            } catch (e) {
+                log(`Warning: Failed to evaluate items on page ${pageNum} (${e.message}). Retrying...`);
+                await new Promise(r => setTimeout(r, 2000));
+                continue;
+            }
             
             log(`Found ${items.length} items on page ${pageNum}.`);
 
