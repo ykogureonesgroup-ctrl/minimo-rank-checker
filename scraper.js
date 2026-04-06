@@ -64,8 +64,9 @@ async function runSearch(options) {
     try {
         log('Navigating to minimodel.jp search page directly...');
         // Area keyword can be directly searched via URL query: /search?keyword=エリア名
-        // Additionally we search for the specific target
-        const searchQuery = encodeURIComponent(`${keyword} ${target}`);
+        // NOTE: We only search for the area (keyword), and then scroll to find the target.
+        // Combining them in the URL causes 0 results on minimodel.jp.
+        const searchQuery = encodeURIComponent(keyword);
         const searchUrl = `https://minimodel.jp/search?keyword=${searchQuery}`;
         
         await page.goto(searchUrl, { waitUntil: 'domcontentloaded', timeout: 60000 });
