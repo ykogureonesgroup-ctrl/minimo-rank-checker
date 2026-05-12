@@ -15,15 +15,14 @@ app.get('/api/search', async (req, res) => {
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
 
-    const keyword = req.query.keyword;
-    const prefecture = req.query.prefecture || '';
+    const searchUrl = req.query.searchUrl;
     const target = req.query.target;
     // Handle limit which might be passed as string '0' or 'unlimited'
     let limit = parseInt(req.query.limit, 10);
     if (isNaN(limit) || limit < 0) limit = 0;
 
-    if (!keyword || !target) {
-        res.write(`data: ${JSON.stringify({ type: 'error', message: 'Keyword and target are required' })}\n\n`);
+    if (!searchUrl || !target) {
+        res.write(`data: ${JSON.stringify({ type: 'error', message: 'Search URL and target are required' })}\n\n`);
         res.end();
         return;
     }
@@ -46,8 +45,7 @@ app.get('/api/search', async (req, res) => {
     try {
         // Run the Puppeteer scraping logic
         await runSearch({
-            keyword,
-            prefecture,
+            searchUrl,
             target,
             limit,
             onLog

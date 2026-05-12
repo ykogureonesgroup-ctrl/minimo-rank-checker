@@ -18,13 +18,8 @@
             <section class="form-section card">
                 <form id="searchForm">
                     <div class="form-group">
-                        <label for="keyword">エリアキーワード <span class="required">*</span></label>
-                        <input type="text" id="keyword" name="keyword" placeholder="例: 表参道" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="prefecture">都道府県 (任意)</label>
-                        <input type="text" id="prefecture" name="prefecture" placeholder="例: 東京都">
+                        <label for="searchUrl">検索結果URL <span class="required">*</span></label>
+                        <input type="url" id="searchUrl" name="searchUrl" placeholder="例: https://minimodel.jp/search?..." required>
                     </div>
 
                     <div class="form-group">
@@ -35,7 +30,7 @@
 
                     <div class="form-group">
                         <label for="limit">ページ上限 (0で無制限)</label>
-                        <input type="number" id="limit" name="limit" value="10" min="0">
+                        <input type="number" id="limit" name="limit" value="0" min="0">
                     </div>
 
                     <button type="submit" id="submitBtn" class="btn primary-btn">
@@ -63,15 +58,14 @@
         document.getElementById('searchForm').addEventListener('submit', function(e) {
             e.preventDefault();
             
-            const keyword = document.getElementById('keyword').value;
-            const prefecture = document.getElementById('prefecture').value;
+            const searchUrl = document.getElementById('searchUrl').value;
             const target = document.getElementById('target').value;
             const limit = document.getElementById('limit').value;
 
-            startSearch(keyword, prefecture, target, limit);
+            startSearch(searchUrl, target, limit);
         });
 
-        function startSearch(keyword, prefecture, target, limit) {
+        function startSearch(searchUrl, target, limit) {
             const btn = document.getElementById('submitBtn');
             const btnText = btn.querySelector('.btn-text');
             const spinner = btn.querySelector('.spinner');
@@ -80,8 +74,7 @@
             
             // Construct query string
             const params = new URLSearchParams({
-                keyword,
-                prefecture,
+                searchUrl,
                 target,
                 limit
             });

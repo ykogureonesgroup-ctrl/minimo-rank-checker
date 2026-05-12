@@ -3,17 +3,11 @@ const yargs = require('yargs/yargs');
 const { hideBin } = require('yargs/helpers');
 
 const argv = yargs(hideBin(process.argv))
-    .option('keyword', {
-        alias: 'k',
+    .option('searchUrl', {
+        alias: 'u',
         type: 'string',
-        description: 'Search area keyword (e.g. "表参道")',
+        description: 'Search result URL (e.g. "https://minimodel.jp/search?...(url)")',
         demandOption: true
-    })
-    .option('prefecture', {
-        alias: 'p',
-        type: 'string',
-        description: 'Prefecture name to filter suggestions (e.g. "東京都")',
-        default: ''
     })
     .option('target', {
         alias: 't',
@@ -31,15 +25,11 @@ const argv = yargs(hideBin(process.argv))
     .argv;
 
 (async () => {
-    const keyword = argv.keyword;
-    const prefecture = argv.prefecture;
+    const searchUrl = argv.searchUrl;
     const target = argv.target;
     const limit = argv.limit;
 
-    console.log(`Starting search for area: "${keyword}"`);
-    if (prefecture) {
-        console.log(`Prefecture filter: "${prefecture}"`);
-    }
+    console.log(`Starting search for URL: "${searchUrl}"`);
     console.log(`Looking for target: "${target}"`);
     if (limit > 0) {
         console.log(`Page limit: ${limit}`);
@@ -56,11 +46,7 @@ const argv = yargs(hideBin(process.argv))
     const page = await browser.newPage();
 
     try {
-        console.log('Navigating to minimodel.jp search page directly...');
-        // Area keyword can be directly searched via URL query: /search?keyword=エリア名
-        // Additionally we search for the specific target
-        const searchQuery = encodeURIComponent(`${keyword} ${target}`);
-        const searchUrl = `https://minimodel.jp/search?keyword=${searchQuery}`;
+        console.log('Navigating to the specified search URL...');
 
         await page.goto(searchUrl, { waitUntil: 'networkidle2' });
         console.log(`Requested URL: ${searchUrl}`);

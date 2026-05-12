@@ -3,17 +3,14 @@ const StealthPlugin = require('puppeteer-extra-plugin-stealth');
 puppeteer.use(StealthPlugin());
 
 async function runSearch(options) {
-    const { keyword, prefecture, target, limit, onLog } = options;
+    const { searchUrl, target, limit, onLog } = options;
 
     const log = (msg) => {
         console.log(msg);
         if (onLog) onLog(msg);
     };
 
-    log(`Starting search for area: "${keyword}"`);
-    if (prefecture) {
-        log(`Prefecture filter: "${prefecture}"`);
-    }
+    log(`Starting search for URL: "${searchUrl}"`);
     log(`Looking for target: "${target}"`);
     if (limit > 0) {
         log(`Page limit: ${limit}`);
@@ -62,14 +59,7 @@ async function runSearch(options) {
 
 
     try {
-        log('Navigating to minimodel.jp search page directly...');
-        // Area keyword can be directly searched via URL query: /search?keyword=エリア名
-        // If prefecture is provided, doing "エリア名(都道府県名)" correctly targets 
-        // specific regions like "大手町(広島県)" vs "大手町(東京都)".
-        // NOTE: We only search for the area (keyword), and then scroll to find the target.
-        const searchKeyword = prefecture ? `${keyword}(${prefecture})` : keyword;
-        const searchQuery = encodeURIComponent(searchKeyword);
-        const searchUrl = `https://minimodel.jp/search?keyword=${searchQuery}`;
+        log('Navigating to the specified search URL...');
         
         await page.goto(searchUrl, { waitUntil: 'domcontentloaded', timeout: 60000 });
         log(`Requested URL: ${searchUrl}`);
