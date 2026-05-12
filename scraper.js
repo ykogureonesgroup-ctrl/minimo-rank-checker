@@ -59,7 +59,7 @@ async function runSearch(options) {
     page.on('request', (request) => {
         if (request.isInterceptResolutionHandled()) return;
         const resourceType = request.resourceType();
-        if (['image', 'font', 'media'].includes(resourceType)) {
+        if (['image', 'font', 'media', 'stylesheet'].includes(resourceType)) {
             request.abort('aborted').catch(() => {});
         } else {
             request.continue().catch(() => {});
