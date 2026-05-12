@@ -102,6 +102,9 @@ async function runSearch(options) {
                 // Wait for either the old card class or the new card class or any profile link
                 await page.waitForSelector('.ArtistDetailCard_artsitDetailCardWrapper__24g3p, a.GTM_artist_detail_card__card, a[href*="/r/"]', { timeout: 15000 });
             } catch (e) {
+                const title = await page.title().catch(() => 'Unknown title');
+                log(`[Debug] Page title at error: ${title}`);
+                log(`[Debug] waitForSelector error: ${e.message}`);
                 log("====== SEARCH COMPLETED ======");
                 log("No results found on this page or end of results reached.");
                 break;
