@@ -12,7 +12,7 @@ const argv = yargs(hideBin(process.argv))
     .option('target', {
         alias: 't',
         type: 'string',
-        description: 'Target name to find (staff or salon name)',
+        description: 'Target profile URL (e.g. "https://minimodel.jp/r/pIg14Pr")',
         demandOption: true
     })
     .option('limit', {
@@ -30,7 +30,12 @@ const argv = yargs(hideBin(process.argv))
     const limit = argv.limit;
 
     console.log(`Starting search for URL: "${searchUrl}"`);
-    console.log(`Looking for target: "${target}"`);
+    let targetProfileId = target;
+    try {
+        const urlObj = new URL(target);
+        targetProfileId = urlObj.pathname;
+    } catch (e) {}
+    console.log(`Looking for target profile: "${targetProfileId}" (Original: "${target}")`);
     if (limit > 0) {
         console.log(`Page limit: ${limit}`);
     } else {
@@ -74,7 +79,7 @@ const argv = yargs(hideBin(process.argv))
 
             // Wait for results to load
             try {
-                await page.waitForSelector('.ArtistDetailCard_artsitDetailCardWrapper__24g3p', { timeout: 5000 });
+                await page.waitForSelector('.ArtistDetailCard_artsitDetailCardWrapper__24g3p, a.GTM_artist_detail_card__card, a[href*="/r/"]', { timeout: 5000 });
             } catch (e) {
                 console.log("No results found on this page.");
                 break;
@@ -82,16 +87,34 @@ const argv = yargs(hideBin(process.argv))
 
             // Extract items
             const items = await page.evaluate(() => {
-                const cards = document.querySelectorAll('.ArtistDetailCard_artsitDetailCardWrapper__24g3p');
-                return Array.from(cards).map((card, index) => {
-                    const staffEl = card.querySelector('.ArtistProfileWithExperienceYear_profileName__JXBzb');
-                    const salonEl = card.querySelector('.ArtistProfileWithExperienceYear_salonName__4_e8k');
-                    return {
-                        staff: staffEl ? staffEl.textContent.trim() : '',
-                        salon: salonEl ? salonEl.textContent.trim() : '',
-                        raw: card.innerText // Fallback for fuzzy match
-                    };
+                let cards = document.querySelectorAll('.ArtistDetailCard_artsitDetailCardWrapper__24g3p, a.GTM_artist_detail_card__card');
+                if (cards.length === 0) {
+                    cards = document.querySelectorAll('a[href*="/r/"]');
+                }
+                
+                const result = [];
+                const seenHrefs = new Set();
+                
+                cards.forEach(card => {
+                    const aTag = card.tagName.toLowerCase() === 'a' ? card : card.querySelector('a[href*="/r/"]');
+                    if (!aTag) return;
+                    
+                    const href = aTag.getAttribute('href');
+                    if (!href || !href.includes('/r/') || seenHrefs.has(href)) return;
+                    
+                    seenHrefs.add(href);
+                    
+                    const staffEl = card.querySelector('[class*="profileName"], [class*="staffName"]');
+                    const salonEl = card.querySelector('[class*="salonName"]');
+                    
+                    result.push({
+                        href: href,
+                        staff: staffEl ? staffEl.textContent.trim() : 'Unknown',
+                        salon: salonEl ? salonEl.textContent.trim() : 'Unknown',
+                        raw: card.innerText.replace(/\n+/g, ' ')
+                    });
                 });
+                return result;
             });
             console.log(`Found ${items.length} items on page ${pageNum}.`);
 
@@ -99,18 +122,15 @@ const argv = yargs(hideBin(process.argv))
             for (let i = 0; i < items.length; i++) {
                 globalRank++;
                 const item = items[i];
-                const normalizedTarget = target.replace(/\s+/g, '');
-                const normalizedStaff = item.staff.replace(/\s+/g, '');
-                const normalizedSalon = item.salon.replace(/\s+/g, '');
-                const normalizedRaw = item.raw.replace(/\s+/g, '');
 
-                if (normalizedStaff.includes(normalizedTarget) || normalizedSalon.includes(normalizedTarget) || normalizedRaw.includes(normalizedTarget)) {
+                if (item.href && item.href.includes(targetProfileId)) {
                     console.log('\n================================');
                     console.log(`✅ TARGET FOUND!`);
                     console.log(`Rank: ${globalRank}`);
                     console.log(`Page: ${pageNum}`);
                     console.log(`Staff: ${item.staff}`);
                     console.log(`Salon: ${item.salon}`);
+                    console.log(`URL: ${item.href}`);
                     console.log('================================\n');
                     found = true;
                     break;

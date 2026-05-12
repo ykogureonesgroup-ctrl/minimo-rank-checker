@@ -11,7 +11,16 @@ async function runSearch(options) {
     };
 
     log(`Starting search for URL: "${searchUrl}"`);
-    log(`Looking for target: "${target}"`);
+    
+    // Extract the profile ID (e.g. /r/pIg14Pr) from the target URL
+    let targetProfileId = target;
+    try {
+        const urlObj = new URL(target);
+        targetProfileId = urlObj.pathname; // Should be like "/r/pIg14Pr"
+    } catch (e) {
+        // If it's not a valid URL, fallback to the string as is
+    }
+    log(`Looking for target profile: "${targetProfileId}" (Original input: "${target}")`);
     if (limit > 0) {
         log(`Page limit: ${limit}`);
     } else {
@@ -90,7 +99,8 @@ async function runSearch(options) {
             log(`Checking page ${pageNum}...`);
 
             try {
-                await page.waitForSelector('.ArtistDetailCard_artsitDetailCardWrapper__24g3p', { timeout: 15000 });
+                // Wait for either the old card class or the new card class or any profile link
+                await page.waitForSelector('.ArtistDetailCard_artsitDetailCardWrapper__24g3p, a.GTM_artist_detail_card__card, a[href*="/r/"]', { timeout: 15000 });
             } catch (e) {
                 log("====== SEARCH COMPLETED ======");
                 log("No results found on this page or end of results reached.");
@@ -100,16 +110,40 @@ async function runSearch(options) {
             let items = [];
             try {
                 items = await page.evaluate(() => {
-                    const cards = document.querySelectorAll('.ArtistDetailCard_artsitDetailCardWrapper__24g3p');
-                    return Array.from(cards).map((card, index) => {
-                        const staffEl = card.querySelector('.ArtistProfileWithExperienceYear_profileName__JXBzb');
-                        const salonEl = card.querySelector('.ArtistProfileWithExperienceYear_salonName__4_e8k');
-                        return {
-                            staff: staffEl ? staffEl.textContent.trim() : '',
-                            salon: salonEl ? salonEl.textContent.trim() : '',
-                            raw: card.innerText
-                        };
+                    // Try different possible selectors for the card
+                    let cards = document.querySelectorAll('.ArtistDetailCard_artsitDetailCardWrapper__24g3p, a.GTM_artist_detail_card__card');
+                    
+                    // Fallback to just finding profile links if specific classes aren't found
+                    if (cards.length === 0) {
+                        cards = document.querySelectorAll('a[href*="/r/"]');
+                    }
+                    
+                    const result = [];
+                    const seenHrefs = new Set();
+                    
+                    cards.forEach(card => {
+                        // The card itself might be an <a> tag, or it might contain an <a> tag
+                        const aTag = card.tagName.toLowerCase() === 'a' ? card : card.querySelector('a[href*="/r/"]');
+                        if (!aTag) return;
+                        
+                        const href = aTag.getAttribute('href');
+                        // Exclude non-profile links
+                        if (!href || !href.includes('/r/') || seenHrefs.has(href)) return;
+                        
+                        seenHrefs.add(href);
+                        
+                        const staffEl = card.querySelector('[class*="profileName"], [class*="staffName"]');
+                        const salonEl = card.querySelector('[class*="salonName"]');
+                        
+                        result.push({
+                            href: href,
+                            staff: staffEl ? staffEl.textContent.trim() : 'Unknown',
+                            salon: salonEl ? salonEl.textContent.trim() : 'Unknown',
+                            raw: card.innerText.replace(/\n+/g, ' ')
+                        });
                     });
+                    
+                    return result;
                 });
             } catch (e) {
                 log(`Warning: Failed to evaluate items on page ${pageNum} (${e.message}). Retrying...`);
@@ -122,18 +156,16 @@ async function runSearch(options) {
             for (let i = 0; i < items.length; i++) {
                 globalRank++;
                 const item = items[i];
-                const normalizedTarget = target.replace(/\s+/g, '');
-                const normalizedStaff = item.staff.replace(/\s+/g, '');
-                const normalizedSalon = item.salon.replace(/\s+/g, '');
-                const normalizedRaw = item.raw.replace(/\s+/g, '');
-
-                if (normalizedStaff.includes(normalizedTarget) || normalizedSalon.includes(normalizedTarget) || normalizedRaw.includes(normalizedTarget)) {
+                
+                // Check if the item's href includes the target profile ID
+                if (item.href && item.href.includes(targetProfileId)) {
                     log('\n================================');
                     log(`✅ TARGET FOUND!`);
                     log(`Rank: ${globalRank}`);
                     log(`Page: ${pageNum}`);
                     log(`Staff: ${item.staff}`);
                     log(`Salon: ${item.salon}`);
+                    log(`URL: ${item.href}`);
                     log('================================\n');
                     log('====== SEARCH COMPLETED ======');
                     found = true;
