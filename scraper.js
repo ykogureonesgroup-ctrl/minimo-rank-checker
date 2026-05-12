@@ -31,14 +31,15 @@ async function runSearch(options) {
         headless: "new", // Run in background for web app
         defaultViewport: null,
         args: [
-            '--window-size=1280,800', 
+            '--window-size=800,600', 
             '--no-sandbox', 
             '--disable-setuid-sandbox',
             '--disable-dev-shm-usage', // Critical for Docker/Render
             '--disable-gpu',
             '--no-zygote',
             '--single-process',
-            '--disable-blink-features=AutomationControlled'
+            '--disable-blink-features=AutomationControlled',
+            '--disable-features=IsolateOrigins,site-per-process' // Render OOM対策
         ],
         executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || null // Use system chrome if in docker
     });
@@ -47,7 +48,7 @@ async function runSearch(options) {
     
     // Removed fixed User-Agent to allow stealth plugin to use the actual browser's UA
     // which prevents Cloudflare version mismatch detection.
-    await page.setViewport({ width: 1280, height: 800 });
+    await page.setViewport({ width: 800, height: 600 });
     
     // Increase default timeout slightly for cold boots
     page.setDefaultNavigationTimeout(60000);

@@ -5,6 +5,9 @@ const { runSearch } = require('./scraper');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// グローバルな検索ロック状態（RenderのOOM防止のため同時実行を禁止）
+let isSearching = false;
+
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 
@@ -26,6 +29,14 @@ app.get('/api/search', async (req, res) => {
         res.end();
         return;
     }
+
+    if (isSearching) {
+        res.write(`data: ${JSON.stringify({ type: 'error', message: '現在サーバーが他の検索を実行中で混み合っています。順番待ちのため、少し時間をおいてから再度お試しください。' })}\n\n`);
+        res.end();
+        return;
+    }
+
+    isSearching = true;
 
     // Helper to send logs to client via SSE
     const onLog = (msg) => {
@@ -52,6 +63,8 @@ app.get('/api/search', async (req, res) => {
         });
     } catch (error) {
         onLog(`ERROR: Unhandled error in scraper: ${error.message}`);
+    } finally {
+        isSearching = false;
     }
 });
 
