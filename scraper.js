@@ -54,8 +54,11 @@ async function runSearch(options) {
     page.setDefaultNavigationTimeout(60000);
     page.setDefaultTimeout(30000);
 
-    // Re-enable Request Interception to prevent Out of Memory (OOM) crashes on Render ("Target closed").
-    // We allow stylesheets/scripts to load cleanly, but block images/fonts/media which consume >100MB RAM.
+    // ---
+    // 画像等のブロック処理（OOM対策）は、ミニモ側のBot/エラー検知（無限リダイレクト）を
+    // 引き起こす可能性があるため、一時的に無効化しています。
+    // ---
+    /*
     await page.setRequestInterception(true);
     page.on('request', (request) => {
         if (request.isInterceptResolutionHandled()) return;
@@ -66,6 +69,7 @@ async function runSearch(options) {
             request.continue().catch(() => {});
         }
     });
+    */
 
 
     try {
