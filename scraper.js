@@ -99,13 +99,32 @@ async function runSearch(options) {
 
             log(`Checking page ${pageNum}...`);
 
-            try {
-                // Wait for either the old card class or the new card class or any profile link
-                await page.waitForSelector('.ArtistDetailCard_artsitDetailCardWrapper__24g3p, a.GTM_artist_detail_card__card, a[href*="/r/"]', { timeout: 15000 });
-            } catch (e) {
-                const title = await page.title().catch(() => 'Unknown title');
-                log(`[Debug] Page title at error: ${title}`);
-                log(`[Debug] waitForSelector error: ${e.message}`);
+            // リダイレクト等でフレームが破棄された場合のリトライ処理
+            let selectorFound = false;
+            let retryCount = 0;
+            const maxRetries = 3;
+
+            while (retryCount < maxRetries) {
+                try {
+                    // Wait for either the old card class or the new card class or any profile link
+                    await page.waitForSelector('.ArtistDetailCard_artsitDetailCardWrapper__24g3p, a.GTM_artist_detail_card__card, a[href*="/r/"]', { timeout: 15000 });
+                    selectorFound = true;
+                    break;
+                } catch (e) {
+                    if (e.message.includes('detached Frame') || e.message.includes('Execution context was destroyed')) {
+                        log(`[Debug] Frame detached or context destroyed. Page might be redirecting. Retrying... (${retryCount + 1}/${maxRetries})`);
+                        await new Promise(r => setTimeout(r, 3000)); // 3秒待ってからリトライ
+                        retryCount++;
+                    } else {
+                        const title = await page.title().catch(() => 'Unknown title');
+                        log(`[Debug] Page title at error: ${title}`);
+                        log(`[Debug] waitForSelector error: ${e.message}`);
+                        break;
+                    }
+                }
+            }
+
+            if (!selectorFound) {
                 log("====== SEARCH COMPLETED ======");
                 log("No results found on this page or end of results reached.");
                 break;

@@ -80,11 +80,29 @@ const argv = yargs(hideBin(process.argv))
 
             console.log(`Checking page ${pageNum}...`);
 
-            // Wait for results to load
-            try {
-                await page.waitForSelector('.ArtistDetailCard_artsitDetailCardWrapper__24g3p, a.GTM_artist_detail_card__card, a[href*="/r/"]', { timeout: 5000 });
-            } catch (e) {
-                console.log("No results found on this page.");
+            // リダイレクト等でフレームが破棄された場合のリトライ処理
+            let selectorFound = false;
+            let retryCount = 0;
+            const maxRetries = 3;
+
+            while (retryCount < maxRetries) {
+                try {
+                    await page.waitForSelector('.ArtistDetailCard_artsitDetailCardWrapper__24g3p, a.GTM_artist_detail_card__card, a[href*="/r/"]', { timeout: 15000 });
+                    selectorFound = true;
+                    break;
+                } catch (e) {
+                    if (e.message.includes('detached Frame') || e.message.includes('Execution context was destroyed')) {
+                        console.log(`[Debug] Frame detached. Retrying... (${retryCount + 1}/${maxRetries})`);
+                        await new Promise(r => setTimeout(r, 3000));
+                        retryCount++;
+                    } else {
+                        console.log("No results found on this page.");
+                        break;
+                    }
+                }
+            }
+
+            if (!selectorFound) {
                 break;
             }
 
