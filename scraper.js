@@ -12,15 +12,15 @@ async function runSearch(options) {
 
     log(`Starting search for URL: "${searchUrl}"`);
     
-    // Extract the profile ID (e.g. /r/pIg14Pr) from the target URL
-    let targetProfileId = target;
-    try {
-        const urlObj = new URL(target);
-        targetProfileId = urlObj.pathname; // Should be like "/r/pIg14Pr"
-    } catch (e) {
-        // If it's not a valid URL, fallback to the string as is
-    }
-    log(`Looking for target profile: "${targetProfileId}" (Original input: "${target}")`);
+    // 正規化されたターゲットユーザーネームを取得（絵文字や特殊文字、空白を除去）
+    const normalizeText = (text) => {
+        if (!text) return '';
+        // 絵文字、特殊記号、空白を削除して小文字化
+        return text.replace(/[\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF]|\s/g, '').toLowerCase();
+    };
+
+    const normalizedTarget = normalizeText(target);
+    log(`Looking for target username: "${target}" (Normalized: "${normalizedTarget}")`);
     if (limit > 0) {
         log(`Page limit: ${limit}`);
     } else {
@@ -161,8 +161,10 @@ async function runSearch(options) {
                 globalRank++;
                 const item = items[i];
                 
-                // Check if the item's href includes the target profile ID
-                if (item.href && item.href.includes(targetProfileId)) {
+                const normalizedStaff = normalizeText(item.staff);
+                
+                // Check if the normalized staff name includes the normalized target name
+                if (normalizedStaff && normalizedTarget && normalizedStaff.includes(normalizedTarget)) {
                     log('\n================================');
                     log(`✅ TARGET FOUND!`);
                     log(`Rank: ${globalRank}`);

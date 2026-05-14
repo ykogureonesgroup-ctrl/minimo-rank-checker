@@ -12,7 +12,7 @@ const argv = yargs(hideBin(process.argv))
     .option('target', {
         alias: 't',
         type: 'string',
-        description: 'Target profile URL (e.g. "https://minimodel.jp/r/pIg14Pr")',
+        description: 'Target username (e.g. "山田花子")',
         demandOption: true
     })
     .option('limit', {
@@ -30,12 +30,15 @@ const argv = yargs(hideBin(process.argv))
     const limit = argv.limit;
 
     console.log(`Starting search for URL: "${searchUrl}"`);
-    let targetProfileId = target;
-    try {
-        const urlObj = new URL(target);
-        targetProfileId = urlObj.pathname;
-    } catch (e) {}
-    console.log(`Looking for target profile: "${targetProfileId}" (Original: "${target}")`);
+    // 正規化されたターゲットユーザーネームを取得（絵文字や特殊文字、空白を除去）
+    const normalizeText = (text) => {
+        if (!text) return '';
+        // 絵文字、特殊記号、空白を削除して小文字化
+        return text.replace(/[\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF]|\s/g, '').toLowerCase();
+    };
+
+    const normalizedTarget = normalizeText(target);
+    console.log(`Looking for target username: "${target}" (Normalized: "${normalizedTarget}")`);
     if (limit > 0) {
         console.log(`Page limit: ${limit}`);
     } else {
@@ -123,7 +126,9 @@ const argv = yargs(hideBin(process.argv))
                 globalRank++;
                 const item = items[i];
 
-                if (item.href && item.href.includes(targetProfileId)) {
+                const normalizedStaff = normalizeText(item.staff);
+
+                if (normalizedStaff && normalizedTarget && normalizedStaff.includes(normalizedTarget)) {
                     console.log('\n================================');
                     console.log(`✅ TARGET FOUND!`);
                     console.log(`Rank: ${globalRank}`);
