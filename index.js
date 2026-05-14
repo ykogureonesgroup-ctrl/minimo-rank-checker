@@ -56,7 +56,11 @@ const argv = yargs(hideBin(process.argv))
     try {
         console.log('Navigating to the specified search URL...');
 
-        await page.goto(searchUrl, { waitUntil: 'networkidle2' });
+        try {
+            await page.goto(searchUrl, { waitUntil: 'networkidle2', timeout: 45000 });
+        } catch (e) {
+            console.log(`Warning: page.goto timeout or error: ${e.message}`);
+        }
         console.log(`Requested URL: ${searchUrl}`);
 
         await new Promise(r => setTimeout(r, 2000));
@@ -92,8 +96,9 @@ const argv = yargs(hideBin(process.argv))
                     break;
                 } catch (e) {
                     if (e.message.includes('detached Frame') || e.message.includes('Execution context was destroyed')) {
-                        console.log(`[Debug] Frame detached. Retrying... (${retryCount + 1}/${maxRetries})`);
-                        await new Promise(r => setTimeout(r, 3000));
+                        console.log(`[Debug] Frame detached. Reloading page and retrying... (${retryCount + 1}/${maxRetries})`);
+                        await page.reload({ waitUntil: 'domcontentloaded', timeout: 15000 }).catch(() => {});
+                        await new Promise(r => setTimeout(r, 2000));
                         retryCount++;
                     } else {
                         console.log("No results found on this page.");

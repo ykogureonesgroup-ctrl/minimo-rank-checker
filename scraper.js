@@ -71,7 +71,11 @@ async function runSearch(options) {
     try {
         log('Navigating to the specified search URL...');
         
-        await page.goto(searchUrl, { waitUntil: 'domcontentloaded', timeout: 60000 });
+        try {
+            await page.goto(searchUrl, { waitUntil: 'networkidle2', timeout: 45000 });
+        } catch (e) {
+            log(`Warning: page.goto timeout or error (${e.message}). Proceeding anyway...`);
+        }
         log(`Requested URL: ${searchUrl}`);
 
         await new Promise(r => setTimeout(r, 2000));
@@ -112,8 +116,9 @@ async function runSearch(options) {
                     break;
                 } catch (e) {
                     if (e.message.includes('detached Frame') || e.message.includes('Execution context was destroyed')) {
-                        log(`[Debug] Frame detached or context destroyed. Page might be redirecting. Retrying... (${retryCount + 1}/${maxRetries})`);
-                        await new Promise(r => setTimeout(r, 3000)); // 3秒待ってからリトライ
+                        log(`[Debug] Frame detached or context destroyed. Reloading page and retrying... (${retryCount + 1}/${maxRetries})`);
+                        await page.reload({ waitUntil: 'domcontentloaded', timeout: 15000 }).catch(() => {});
+                        await new Promise(r => setTimeout(r, 2000));
                         retryCount++;
                     } else {
                         const title = await page.title().catch(() => 'Unknown title');
